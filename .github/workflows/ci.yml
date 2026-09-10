@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    # Nightly, for the fuzz soak.
+    - cron: "0 3 * * *"
 
 env:
   CARGO_TERM_COLOR: always
@@ -63,6 +66,22 @@ jobs:
       # This one line is the guarantee that RP2040 firmware can actually use this crate.
       - name: Build protocol for thumbv6m-none-eabi
         run: cargo build -p wattson-protocol --no-default-features --target thumbv6m-none-eabi
+
+  # The decoder eats untrusted bytes off a USB device and the reader eats untrusted files, so
+  # both are fuzzed. Nightly rather than per-PR: fuzzing is a soak, not a gate.
+  fuzz:
+    name: fuzz (nightly schedule only)
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - run: sudo apt-get update && sudo apt-get install -y libudev-dev pkg-config
+      - run: cargo install cargo-fuzz
+      - run: cargo fuzz run decoder -- -max_total_time=300
+        working-directory: .
+      - run: cargo fuzz run capture_reader -- -max_total_time=300
+        working-directory: .
 
   deny:
     name: licenses and advisories

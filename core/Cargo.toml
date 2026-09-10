@@ -31,6 +31,10 @@ approx.workspace = true
 rstest.workspace = true
 criterion.workspace = true
 
+[[bench]]
+name = "pipeline"
+harness = false
+
 [features]
 default = ["zstd"]
 zstd = ["dep:zstd"]

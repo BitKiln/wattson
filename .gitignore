@@ -9,8 +9,10 @@ desktop/dist/
 
 # fuzzing
 fuzz/target/
+fuzz/build/
 fuzz/artifacts/
 fuzz/corpus/
+fuzz/Cargo.lock
 
 # local captures & scratch
 *.pprof

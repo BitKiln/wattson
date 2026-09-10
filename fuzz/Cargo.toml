@@ -1,0 +1,37 @@
+# Fuzz targets. Deliberately NOT a workspace member: cargo-fuzz needs nightly, and stable CI
+# must not be held hostage to that.
+#
+#   cargo install cargo-fuzz
+#   cargo +nightly fuzz run decoder
+#   cargo +nightly fuzz run capture_reader
+[package]
+name = "wattson-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+wattson-protocol = { path = "../protocol/rust" }
+wattson-core = { path = "../core" }
+tempfile = "3"
+
+[[bin]]
+name = "decoder"
+path = "fuzz_targets/decoder.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "capture_reader"
+path = "fuzz_targets/capture_reader.rs"
+test = false
+doc = false
+bench = false
+
+[profile.release]
+debug = 1

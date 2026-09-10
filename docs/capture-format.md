@@ -223,6 +223,33 @@ error or a genuine prefix of what was written: never a panic, never a fabricated
 
 ---
 
+## Measured cost
+
+From `cargo bench -p wattson-core --bench pipeline` on a development machine. The number that
+matters is **400 KB/s** — 50 ksps × 8 bytes — because that is what a device produces.
+
+| Path | Measured | Headroom |
+|---|---|---|
+| Frame decode to samples | ~125 MiB/s | ~300× |
+| Capture write, zstd | ~20 M samples/s | ~400× |
+| Capture read, all samples | ~51 M samples/s | — |
+| Region statistics | ~31 M samples/s | — |
+| Overview, 64 buckets | ~28 µs | answered from the pyramid |
+| Overview, 1024 buckets | ~13 ms | falls through to sample chunks |
+
+Two things worth reading off that table:
+
+- **The pyramid earns its place.** 64 buckets over a ten-second capture is answered in 28 µs
+  because it never touches a sample chunk; 1024 buckets over the same capture costs 13 ms
+  because it does. That is the difference between a zoom that feels instant and one that
+  stutters, and it is why the summary is written at capture time rather than computed on
+  demand.
+- **Compression is not a cost here, it is a saving.** Writing with zstd is *faster* than
+  writing uncompressed, because the file is several times smaller and the I/O dominates.
+
+Re-measure before changing the chunk size; the header field exists so the answer can change
+without the format changing.
+
 ## Versioning
 
 - **Major bump** — incompatible. A reader refuses, naming the version that wrote the file.
