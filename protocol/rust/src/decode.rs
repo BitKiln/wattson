@@ -90,6 +90,9 @@ impl DecoderStats {
 }
 
 /// Streaming COBS frame decoder with fixed-size buffers and no allocation.
+///
+/// `Debug` prints the counters rather than a kilobyte of buffer contents, which is what a
+/// caller embedding this in a session actually wants to see.
 pub struct Decoder {
     /// Accumulates raw wire bytes between delimiters.
     raw: [u8; MAX_ENCODED],
@@ -107,6 +110,16 @@ pub struct Decoder {
     desynced: bool,
     last_seq: Option<u8>,
     stats: DecoderStats,
+}
+
+impl core::fmt::Debug for Decoder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Decoder")
+            .field("buffered", &self.raw_len)
+            .field("desynced", &self.desynced)
+            .field("stats", &self.stats)
+            .finish()
+    }
 }
 
 impl Default for Decoder {

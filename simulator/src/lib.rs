@@ -11,10 +11,14 @@
 
 #![forbid(unsafe_code)]
 
+pub mod device;
 pub mod engine;
 pub mod profiles;
 pub mod rng;
+pub mod server;
 
+pub use device::{DEVICE_TYPE_SIMULATOR, SAMPLES_PER_BLOCK, SimDevice};
 pub use engine::{FaultInjection, SimBlock, SimConfig, SimEngine};
 pub use profiles::{PowerState, Profile};
 pub use rng::SimRng;
+pub use server::{ByteChannel, SimHandle, SimServer, run_device};

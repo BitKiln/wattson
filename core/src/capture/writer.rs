@@ -164,7 +164,7 @@ impl<W: Write + Seek> CaptureWriter<W> {
                 // Timing changed: fall back to per-sample deltas for this chunk rather than
                 // pretending the samples are evenly spaced. `count * period` is exactly how a
                 // capture silently under-reports energy across a hiccup.
-                let period = self.pending.period_ns as u32;
+                let period = self.pending.period_ns;
                 self.pending.dt_ns = std::iter::once(0)
                     .chain(std::iter::repeat_n(period, self.pending.len() - 1))
                     .collect();
@@ -443,6 +443,61 @@ impl<W: Write + Seek> CaptureWriter<W> {
     /// The path this writer was created for, for error messages.
     pub fn path(&self) -> &Path {
         &self.path
+    }
+}
+
+/// A capture writer is the sink a live session writes into.
+impl<W: Write + Seek> crate::session::CaptureSink for CaptureWriter<W> {
+    fn on_samples(
+        &mut self,
+        samples: &[(u64, i32, Option<u32>)],
+    ) -> Result<(), crate::error::SinkError> {
+        self.push_samples(samples)?;
+        Ok(())
+    }
+
+    fn on_event(
+        &mut self,
+        t_ns: u64,
+        id: u16,
+        value: Option<u32>,
+    ) -> Result<(), crate::error::SinkError> {
+        self.push_event(t_ns, id, value)?;
+        Ok(())
+    }
+
+    fn on_gpio(&mut self, t_ns: u64, state: u16) -> Result<(), crate::error::SinkError> {
+        self.push_gpio(t_ns, state)?;
+        Ok(())
+    }
+
+    fn on_sync(&mut self, sample: crate::time::SyncSample) -> Result<(), crate::error::SinkError> {
+        self.push_sync(super::payload::SyncRow {
+            host_send_ns: sample.host_send_ns,
+            host_recv_ns: sample.host_recv_ns,
+            device_ticks: sample.device_ticks,
+        })?;
+        Ok(())
+    }
+
+    fn on_gap(&mut self, gap: Gap) -> Result<(), crate::error::SinkError> {
+        self.push_gap(gap);
+        Ok(())
+    }
+
+    fn on_device_error(
+        &mut self,
+        code: u16,
+        dropped_samples: u32,
+    ) -> Result<(), crate::error::SinkError> {
+        // A device that reports loss has already lost data; the only wrong response is to
+        // say nothing about it.
+        tracing::warn!(
+            code = format!("0x{code:04X}"),
+            dropped_samples,
+            "device reported an error"
+        );
+        Ok(())
     }
 }
 

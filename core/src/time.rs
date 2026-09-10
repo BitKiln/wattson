@@ -197,6 +197,33 @@ impl TickUnwrapper {
         Ok(DeviceTime((self.epoch << 32) | raw as u64))
     }
 
+    /// Resolve a raw tick value against the current epoch **without advancing it**.
+    ///
+    /// Samples, events, GPIO edges and SYNC echoes all share one device timer, but they
+    /// arrive interleaved and are not monotonic *relative to each other*: an event stamped
+    /// before a sample block routinely arrives after it. Feeding all four streams into
+    /// [`TickUnwrapper::unwrap_ticks`] would therefore read every such ordering as time
+    /// going backwards.
+    ///
+    /// So the sample stream — the only one that is genuinely monotonic and dense — advances
+    /// the epoch, and everything else is resolved against it here, picking whichever epoch
+    /// puts the value closest to the last sample seen.
+    pub fn resolve(&self, raw: u32) -> DeviceTime {
+        let Some(last) = self.last else {
+            return DeviceTime((self.epoch << 32) | raw as u64);
+        };
+        let epoch = if raw > last && raw - last > Self::HALF {
+            // Far ahead of the last sample: this actually belongs to the previous epoch.
+            self.epoch.saturating_sub(1)
+        } else if last > raw && last - raw > Self::HALF {
+            // Far behind: the counter has wrapped since.
+            self.epoch + 1
+        } else {
+            self.epoch
+        };
+        DeviceTime((epoch << 32) | raw as u64)
+    }
+
     /// Cross-check the inferred epoch against the device's own overflow counter.
     ///
     /// `wrap_count` is a `u16`, so only its low 16 bits are comparable; that still covers
@@ -476,6 +503,28 @@ mod tests {
             u.unwrap_ticks(0x9000_0000),
             Err(TimeError::ImplausibleGap { .. })
         ));
+    }
+
+    /// Events and samples share a timer but arrive interleaved, so resolving a non-sample
+    /// timestamp must not be read as time going backwards.
+    #[test]
+    fn resolve_handles_out_of_order_streams_without_advancing_the_epoch() {
+        let mut u = TickUnwrapper::new();
+        u.unwrap_ticks(19_180).unwrap();
+
+        // An event stamped earlier than the last sample block, arriving after it.
+        assert_eq!(u.resolve(5_000), DeviceTime(5_000));
+        assert_eq!(u.epoch(), 0, "resolving must not advance the epoch");
+
+        // And across a wrap, with an unwrapper that reached it by advancing normally.
+        let mut u = TickUnwrapper::new();
+        u.unwrap_ticks(0xFFFF_FF00).unwrap();
+        u.unwrap_ticks(0x0000_0100).unwrap();
+        assert_eq!(u.epoch(), 1);
+        // Just before the wrap: still the previous epoch.
+        assert_eq!(u.resolve(0xFFFF_FFF0), DeviceTime(0xFFFF_FFF0));
+        // Just after it: the current one.
+        assert_eq!(u.resolve(0x0000_0200), DeviceTime(0x1_0000_0200));
     }
 
     #[test]

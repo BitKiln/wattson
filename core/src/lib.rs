@@ -20,6 +20,10 @@
 //! - [`transport`] — the byte pipe, and its implementations.
 //! - [`capture`] — the `.pprof` file format: writer, reader, and truncation recovery.
 //! - [`metadata`] — what the opaque event ids on the wire actually mean.
+//! - [`stats`] — region and per-event statistics. Read its module docs before touching an
+//!   accumulator.
+//! - [`session`] — the live conversation with a device, and the one place device timestamps
+//!   are unwrapped.
 
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
@@ -27,6 +31,8 @@
 pub mod capture;
 pub mod error;
 pub mod metadata;
+pub mod session;
+pub mod stats;
 pub mod time;
 pub mod transport;
 pub mod units;
@@ -41,6 +47,10 @@ pub use error::{
     UnitError, UriError,
 };
 pub use metadata::{CaptureMetadata, EventDef, EventMap};
+pub use session::{CaptureConfig, CaptureSink, PollStats, Session};
+pub use stats::{
+    Distribution, EventStats, Integration, RegionStats, StatsOptions, event_stats, region_stats,
+};
 pub use time::{
     CaptureTime, ClockFit, DeviceTicks, DeviceTime, SyncSample, TickUnwrapper, TimeBase, TimeSpan,
     fit_clocks,
