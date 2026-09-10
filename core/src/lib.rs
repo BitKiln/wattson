@@ -18,20 +18,29 @@
 //!   docs before touching anything that computes a duration.
 //! - [`uri`] — one string names a serial device, a TCP simulator, or a stored capture.
 //! - [`transport`] — the byte pipe, and its implementations.
+//! - [`capture`] — the `.pprof` file format: writer, reader, and truncation recovery.
+//! - [`metadata`] — what the opaque event ids on the wire actually mean.
 
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 
+pub mod capture;
 pub mod error;
+pub mod metadata;
 pub mod time;
 pub mod transport;
 pub mod units;
 pub mod uri;
 
+pub use capture::{
+    CaptureHeader, CaptureReader, CaptureSummary, CaptureWriter, Compression, Gap, GapCause,
+    GapPolicy, WriterOptions,
+};
 pub use error::{
     CaptureError, ExportError, SessionError, SinkError, StatsError, TimeError, TransportError,
     UnitError, UriError,
 };
+pub use metadata::{CaptureMetadata, EventDef, EventMap};
 pub use time::{
     CaptureTime, ClockFit, DeviceTicks, DeviceTime, SyncSample, TickUnwrapper, TimeBase, TimeSpan,
     fit_clocks,
