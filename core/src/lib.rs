@@ -20,6 +20,8 @@
 //! - [`transport`] — the byte pipe, and its implementations.
 //! - [`capture`] — the `.pprof` file format: writer, reader, and truncation recovery.
 //! - [`metadata`] — what the opaque event ids on the wire actually mean.
+//! - [`assert`] — power budgets as build gates.
+//! - [`export`] — CSV and JSON output.
 //! - [`stats`] — region and per-event statistics. Read its module docs before touching an
 //!   accumulator.
 //! - [`session`] — the live conversation with a device, and the one place device timestamps
@@ -28,8 +30,10 @@
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 
+pub mod assert;
 pub mod capture;
 pub mod error;
+pub mod export;
 pub mod metadata;
 pub mod session;
 pub mod stats;
@@ -38,6 +42,9 @@ pub mod transport;
 pub mod units;
 pub mod uri;
 
+pub use assert::{
+    AssertReport, AssertResult, AssertRule, Baseline, Comparison, Metric, evaluate_assertions,
+};
 pub use capture::{
     CaptureHeader, CaptureReader, CaptureSummary, CaptureWriter, Compression, Gap, GapCause,
     GapPolicy, WriterOptions,
@@ -46,6 +53,7 @@ pub use error::{
     CaptureError, ExportError, SessionError, SinkError, StatsError, TimeError, TransportError,
     UnitError, UriError,
 };
+pub use export::{AnalysisReport, CaptureInfo, ExportFormat};
 pub use metadata::{CaptureMetadata, EventDef, EventMap};
 pub use session::{CaptureConfig, CaptureSink, PollStats, Session};
 pub use stats::{

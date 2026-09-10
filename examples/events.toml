@@ -1,0 +1,50 @@
+# Example event metadata.
+#
+# The wire carries opaque u16 event ids and nothing else. This file is what turns them back
+# into names, pairs starts with stops, and records the signalling latency to correct for.
+#
+#   wattson capture --device serial:COM7 --metadata examples/events.toml --out cap.pprof
+#
+# It is stored inside the capture, so a .pprof stays self-describing after the firmware that
+# produced it is gone.
+
+invocation = "example"
+
+# A scope: it has a start and a stop, so it has a duration and therefore an energy cost.
+[[event]]
+name = "BLE_TX"
+start_id = 0x0101
+stop_id = 0x0102
+category = "radio"
+# UART at 1 Mbaud costs roughly 10 us of byte time before the profiler learns of the event.
+# Recording it here lets the capture be corrected rather than being quietly 1% wrong.
+# A GPIO toggle would be under a microsecond; delete this line if you use one.
+latency_compensation_ns = 10000
+
+[[event]]
+name = "SENSOR_READ"
+start_id = 0x0201
+stop_id = 0x0202
+category = "sensor"
+latency_compensation_ns = 10000
+
+[[event]]
+name = "SLEEP"
+start_id = 0x0501
+stop_id = 0x0502
+category = "power"
+
+# A point event: it has a time but no duration, so no energy is attributed to it. Useful for
+# marking something whose cost is already inside another scope.
+[[event]]
+name = "PACKET_TX"
+start_id = 0x0110
+category = "radio"
+value_units = "bytes"
+
+# Anything worth knowing when someone reads this capture in six months.
+[notes]
+firmware = "v1.3.0-4-gabc1234"
+board = "rev-C"
+target = "nRF52840 DK"
+supply = "3.3 V bench supply"

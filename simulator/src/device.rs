@@ -7,6 +7,7 @@
 
 use std::time::{Duration, Instant};
 
+pub use wattson_protocol::DEVICE_TYPE_SIMULATOR;
 use wattson_protocol::{
     Caps, Config, DEVICE_MAGIC, Decoder, DeviceError, DeviceInfo, ErrorCode, EventBlock, Frame,
     FrameType, MAX_ENCODED, MAX_PAYLOAD, Marker, PROTOCOL_VERSION, SampleBlock, SyncFrame,
@@ -19,12 +20,6 @@ use crate::engine::{FaultInjection, SimConfig, SimEngine};
 /// blocks/s at 50 ksps — small enough to keep latency low, large enough that per-frame
 /// overhead stays under 3%.
 pub const SAMPLES_PER_BLOCK: usize = 64;
-
-/// Device type reported in DEVICE_INFO by a simulator.
-///
-/// Deliberately in the reserved high range so a capture from the simulator can never be
-/// mistaken for one from real measurement hardware.
-pub const DEVICE_TYPE_SIMULATOR: u16 = 0xFFFF;
 
 /// Where the device is in its lifecycle.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

@@ -58,3 +58,15 @@ opt-level = 2
 
 [profile.dev.package.zstd-sys]
 opt-level = 3
+
+# The sample path is hot enough that unoptimized builds cannot keep up with a 50 ksps device,
+# and a `cargo test` that silently captures half the samples it asked for teaches the wrong
+# thing. These three crates carry that path; the CLI stays unoptimized and debuggable.
+[profile.dev.package.wattson-protocol]
+opt-level = 2
+
+[profile.dev.package.wattson-core]
+opt-level = 2
+
+[profile.dev.package.wattson-sim]
+opt-level = 2

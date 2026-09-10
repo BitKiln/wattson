@@ -42,10 +42,18 @@ impl Shared {
         let mut ch = self.channel.lock().expect("pipe mutex poisoned");
         loop {
             if !ch.buf.is_empty() {
+                // Bulk-copy through the deque's contiguous halves. Popping byte by byte here
+                // costs enough at 400 KB/s that the host falls behind a 50 ksps device and
+                // silently loses the backlog at the end of a capture.
                 let n = out.len().min(ch.buf.len());
-                for slot in out.iter_mut().take(n) {
-                    *slot = ch.buf.pop_front().expect("checked non-empty");
+                let (front, back) = ch.buf.as_slices();
+                let take_front = n.min(front.len());
+                out[..take_front].copy_from_slice(&front[..take_front]);
+                if take_front < n {
+                    let rest = n - take_front;
+                    out[take_front..n].copy_from_slice(&back[..rest]);
                 }
+                ch.buf.drain(..n);
                 return Ok(n);
             }
             if ch.closed {
@@ -247,6 +255,28 @@ mod tests {
             got.extend_from_slice(&small[..n]);
         }
         assert_eq!(got, vec![1, 2, 3, 4, 5, 6]);
+    }
+
+    /// The bulk-copy path must return the bytes in order across the deque's wrap point.
+    #[test]
+    fn bulk_reads_are_correct_across_the_ring_wrap() {
+        let (mut host, mut device) = PipeTransport::pair();
+        // Write, partially drain, then write again, so the deque's two halves both hold data.
+        device.write_all(&(0u8..200).collect::<Vec<u8>>()).unwrap();
+        let mut small = [0u8; 150];
+        assert_eq!(host.read(&mut small).unwrap(), 150);
+        device
+            .write_all(&(200u8..=255).collect::<Vec<u8>>())
+            .unwrap();
+
+        let mut rest = [0u8; 256];
+        let mut got = Vec::new();
+        while got.len() < 106 {
+            let n = host.read(&mut rest).unwrap();
+            got.extend_from_slice(&rest[..n]);
+        }
+        let expected: Vec<u8> = (150u8..=255).collect();
+        assert_eq!(got, expected, "bytes must survive the ring wrap in order");
     }
 
     #[test]

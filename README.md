@@ -81,9 +81,9 @@ durable part of this project and stays valuable no matter which measurement boar
 | Component | Path | Status |
 |---|---|---|
 | Wire protocol (`no_std`) | `protocol/` | implemented |
-| Core: transports, capture format, statistics | `core/` | in progress |
-| Simulated device | `simulator/` | in progress |
-| CLI | `cli/` | in progress |
+| Core: transports, capture format, statistics, assertions | `core/` | implemented |
+| Simulated device | `simulator/` | implemented |
+| CLI: capture, info, analyze, export, assert, sim | `cli/` | implemented |
 | Desktop app (Tauri 2 + React) | `desktop/` | phase 2 |
 | Profiler firmware | `firmware/` | phase 2 |
 | Target C instrumentation library | `target/` | phase 3 |
@@ -91,19 +91,61 @@ durable part of this project and stays valuable no matter which measurement boar
 
 ## Quick start
 
-No hardware required.
+No hardware required. The simulator speaks the real wire protocol, so nothing downstream
+knows the difference.
 
 ```bash
-cargo run -p wattson-cli -- sim --listen 127.0.0.1:9000 --profile ble-sensor
+cargo run --release -p wattson-cli -- capture --device "sim://ble-sensor" --duration 10s --out smoke.pprof
 ```
 
 ```bash
-cargo run -p wattson-cli -- capture --device tcp://127.0.0.1:9000 --duration 10s --out smoke.pprof
+cargo run --release -p wattson-cli -- analyze smoke.pprof --events --plot
+```
+
+```text
+  █▁▁██▁▁█▁▁▁█▁▁▁█▁▁█▄▁▁█▁▁▁█▁▁▁█▁▁██▁▁██▁▁█▁▁▁█▁▁█▆▁▁██▁▁█▁▁▁█▁▁▁█▁▁█▆▁▁█
+  0 s                                          10.000 s   peak 83.680 mA
+
+Selection: 10.000 s
+  Duration             10.000 s
+  Avg current          4.411 mA
+  Energy               145.6 mJ
+  Charge               44.1 mC (0.012 mAh)
+  Battery life         49.9 h on a 220 mAh cell
+
+Events, most expensive first:
+
+BLE_TX
+  Occurrences          100
+  Duration             958.500 µs  (p95 996.000 µs, min 900.000 µs, max 1.008 ms)
+  Mean current         74.485 mA
+  Peak current         83.680 mA
+  Energy               230.089 µJ  (p95 241.123 µJ, min 215.469 µJ, max 242.623 µJ)
+  Total energy         23.0 mJ
+  Duty cycle           1.002%
+```
+
+Then make it a build gate:
+
+```bash
+cargo run --release -p wattson-cli -- assert smoke.pprof --event BLE_TX --max-energy 260uJ
+```
+
+To watch it fail, capture from `sim://ble-sensor-regressed` — the same node with a 21% longer
+transmission — and run the identical assertion. That pair exists so the gate can be shown to
+both pass and fail; a gate that only ever passes proves nothing.
+
+Over a socket instead, which is what CI does:
+
+```bash
+cargo run --release -p wattson-cli -- sim --listen 127.0.0.1:9000 --profile ble-sensor
 ```
 
 ```bash
-cargo run -p wattson-cli -- analyze smoke.pprof --events
+cargo run --release -p wattson-cli -- capture --device tcp://127.0.0.1:9000 --duration 10s --out smoke.pprof
 ```
+
+Full reference: [docs/cli.md](docs/cli.md).
 
 ## Layout
 

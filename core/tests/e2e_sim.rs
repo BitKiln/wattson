@@ -413,3 +413,58 @@ fn a_capture_interrupted_mid_write_is_still_readable() {
         );
     }
 }
+
+/// Sustained throughput, with no loss.
+///
+/// The number that decides whether any of this works against real hardware: 50 ksps is
+/// 400 KB/s of payload, against roughly 0.5-1 MB/s of realistic USB CDC-ACM throughput. If the
+/// host cannot keep up against an in-memory pipe, it certainly will not against a device.
+///
+/// Asserts on *loss*, not on wall-clock speed, so a loaded CI runner does not produce a
+/// spurious failure — but a loaded runner that drops samples still fails, which is the point.
+#[test]
+fn a_50_ksps_capture_loses_nothing() {
+    let rate = 50_000;
+    let mut rig = Rig::start(sim_config(Profile::always_on(), rate));
+    let mut session = rig.session();
+    let mut sink = CountingSink::default();
+
+    let started = std::time::Instant::now();
+    capture_into(&mut session, &mut sink, rate, Duration::from_secs(2));
+    let wall = started.elapsed();
+
+    let stats = session.decoder_stats();
+    assert_eq!(
+        stats.crc_errors, 0,
+        "a clean device must produce no CRC errors"
+    );
+    assert_eq!(stats.cobs_errors, 0);
+    assert_eq!(stats.length_errors, 0);
+    assert_eq!(
+        stats.seq_gaps, 0,
+        "a dropped frame means the host could not keep up"
+    );
+    assert!(
+        sink.gaps.is_empty(),
+        "samples went missing: {:?}",
+        sink.gaps
+    );
+    assert_eq!(sink.device_errors, 0, "the device reported an error");
+
+    // The derived rate is what matters: it says the samples that arrived are evenly spaced at
+    // the rate that was asked for, rather than a thinned-out subset that would silently
+    // under-report energy.
+    let span_ns = sink.last_ns.saturating_sub(sink.first_ns.unwrap_or(0));
+    assert!(span_ns > 0, "no samples arrived at all");
+    let derived = (sink.samples - 1) as f64 * 1e9 / span_ns as f64;
+    assert!(
+        (derived - rate as f64).abs() < rate as f64 * 0.02,
+        "derived rate {derived:.0} Hz differs from the configured {rate} Hz by more than 2%"
+    );
+
+    // 2 s of capture should not take much more than 2 s of wall time.
+    assert!(
+        wall < Duration::from_secs(8),
+        "capturing 2 s took {wall:?}; the host is far behind the device"
+    );
+}

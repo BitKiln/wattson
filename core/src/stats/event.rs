@@ -116,10 +116,7 @@ pub type PairingResult = (Vec<PairedOccurrence>, u64, u64);
 ///
 /// A stack, not a flag, so nested occurrences of the same scope pair correctly — which real
 /// firmware produces the moment a scoped macro appears in a recursive or re-entrant path.
-pub fn occurrences_of(
-    def: &EventDef,
-    events: &[StoredEvent],
-) -> PairingResult {
+pub fn occurrences_of(def: &EventDef, events: &[StoredEvent]) -> PairingResult {
     let mut open: Vec<(u64, Option<u32>)> = Vec::new();
     let mut out = Vec::new();
     let mut orphaned = 0u64;

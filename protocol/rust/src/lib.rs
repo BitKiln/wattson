@@ -70,5 +70,13 @@ pub const CRC_LEN: usize = 4;
 /// Magic in `DEVICE_INFO`, ASCII `"PPRF"` read little-endian.
 pub const DEVICE_MAGIC: u32 = 0x4652_5050;
 
+/// `DEVICE_INFO.device_type` reported by a simulated device.
+///
+/// In the reserved high range on purpose. A host keys "is this synthetic?" off what the
+/// device says it is, not off how the host happened to reach it: a simulator reached over TCP
+/// is still a simulator, and a capture of one must never be mistaken for a measurement of real
+/// hardware.
+pub const DEVICE_TYPE_SIMULATOR: u16 = 0xFFFF;
+
 /// Default device timer frequency when a device does not report one: 1 MHz, i.e. 1 tick = 1 µs.
 pub const DEFAULT_TIMER_HZ: u32 = 1_000_000;
