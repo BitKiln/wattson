@@ -1,0 +1,37 @@
+[package]
+name = "wattson-core"
+description = "Wattson power-profiler core: transports, capture format, statistics, assertions."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+wattson-protocol.workspace = true
+thiserror.workspace = true
+serialport.workspace = true
+crossbeam-channel.workspace = true
+zstd = { workspace = true, optional = true }
+lz4_flex = { workspace = true, optional = true }
+serde.workspace = true
+serde_json.workspace = true
+ciborium.workspace = true
+toml.workspace = true
+tracing.workspace = true
+jiff.workspace = true
+zerocopy.workspace = true
+
+[dev-dependencies]
+wattson-sim.workspace = true
+proptest.workspace = true
+tempfile.workspace = true
+approx.workspace = true
+rstest.workspace = true
+criterion.workspace = true
+
+[features]
+default = ["zstd"]
+zstd = ["dep:zstd"]
+lz4 = ["dep:lz4_flex"]

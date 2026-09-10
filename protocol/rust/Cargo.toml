@@ -1,0 +1,22 @@
+[package]
+name = "wattson-protocol"
+description = "Wattson power-profiler wire protocol: COBS framing, CRC-32, frame codecs. no_std."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+categories = ["embedded", "encoding", "no-std"]
+keywords = ["power", "profiling", "protocol", "cobs", "embedded"]
+
+[dependencies]
+cobs.workspace = true
+crc.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[features]
+default = ["std"]
+std = []

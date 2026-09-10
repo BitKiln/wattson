@@ -1,0 +1,5 @@
+# `target/` at the repo root holds the C instrumentation library for the device under
+# test (see target/README.md), which collides with cargo's default build directory.
+# Cargo builds into `build/` here instead. rust-analyzer and `cargo tauri` respect this.
+[build]
+target-dir = "build"

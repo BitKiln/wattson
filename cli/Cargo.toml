@@ -1,0 +1,36 @@
+[package]
+name = "wattson-cli"
+description = "Wattson command-line power profiler: capture, analyze, export, assert."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+wattson-core.workspace = true
+wattson-protocol.workspace = true
+wattson-sim = { workspace = true, optional = true }
+anyhow.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+ctrlc.workspace = true
+
+[dev-dependencies]
+assert_cmd.workspace = true
+predicates.workspace = true
+tempfile.workspace = true
+insta.workspace = true
+
+[features]
+default = ["sim"]
+sim = ["dep:wattson-sim"]
+
+[[bin]]
+name = "wattson"
+path = "src/main.rs"

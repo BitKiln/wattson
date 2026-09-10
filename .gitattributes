@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.pprof binary
+protocol/spec/vectors/*.hex text eol=lf
+target/** linguist-language=C
+target/** -linguist-generated
+*.rs text diff=rust

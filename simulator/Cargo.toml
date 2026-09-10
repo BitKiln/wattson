@@ -1,0 +1,23 @@
+[package]
+name = "wattson-sim"
+description = "Deterministic synthetic power-profiler device for Wattson: no hardware required."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+wattson-protocol.workspace = true
+thiserror.workspace = true
+rand_chacha.workspace = true
+rand_core.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+approx.workspace = true
+
+[[bin]]
+name = "wattson-sim"
+path = "src/bin/wattson-sim.rs"

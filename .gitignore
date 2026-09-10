@@ -1,0 +1,28 @@
+# cargo build output — relocated to build/ by .cargo/config.toml, since the
+# repo's own target/ directory holds C instrumentation sources.
+/build
+**/build/
+
+# node / tauri
+node_modules/
+desktop/dist/
+
+# fuzzing
+fuzz/target/
+fuzz/artifacts/
+fuzz/corpus/
+
+# local captures & scratch
+*.pprof
+!cli/tests/golden/*.pprof
+*.pprof.tmp
+/scratch
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# insta rejects
+*.snap.new
