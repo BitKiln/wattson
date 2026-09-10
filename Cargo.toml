@@ -8,8 +8,8 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/wattson-profiler/wattson"
-homepage = "https://github.com/wattson-profiler/wattson"
+repository = "https://github.com/BitKiln/wattson"
+homepage = "https://github.com/BitKiln/wattson"
 authors = ["Wattson contributors"]
 
 [workspace.dependencies]
