@@ -12,6 +12,7 @@ pub mod capture;
 pub mod completions;
 pub mod devices;
 pub mod export;
+pub mod gen_header;
 pub mod info;
 #[cfg(feature = "sim")]
 pub mod sim;

@@ -32,6 +32,7 @@
 
 pub mod assert;
 pub mod capture;
+pub mod codegen;
 pub mod error;
 pub mod export;
 pub mod metadata;

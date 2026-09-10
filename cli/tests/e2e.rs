@@ -485,7 +485,14 @@ fn devices_points_at_the_simulator_when_nothing_is_attached() {
 #[test]
 fn every_subcommand_has_help() {
     for cmd in [
-        "devices", "capture", "info", "analyze", "export", "assert", "sim",
+        "devices",
+        "capture",
+        "info",
+        "analyze",
+        "export",
+        "assert",
+        "gen-header",
+        "sim",
     ] {
         wattson()
             .args([cmd, "--help"])
@@ -493,6 +500,107 @@ fn every_subcommand_has_help() {
             .success()
             .stdout(predicate::str::contains("Usage"));
     }
+}
+
+// ---------------------------------------------------------------------------
+// gen-header
+// ---------------------------------------------------------------------------
+
+/// The generated header defines the ids the metadata declares, and says so out loud.
+#[test]
+fn gen_header_emits_the_ids_from_the_metadata() {
+    let dir = tmp();
+    let meta = dir.path().join("events.toml");
+    std::fs::write(
+        &meta,
+        "[[event]]
+name = \"BLE_TX\"
+start_id = 0x0100
+stop_id = 0x0101
+
+         [[event]]
+name = \"PACKET_TX\"
+start_id = 0x0110
+value_units = \"bytes\"
+",
+    )
+    .expect("write metadata");
+
+    let out = dir.path().join("pp_events.h");
+    wattson()
+        .args(["gen-header", meta.to_str().expect("path")])
+        .args(["-o", out.to_str().expect("path")])
+        .assert()
+        .success();
+
+    let header = std::fs::read_to_string(&out).expect("read header");
+    assert!(header.contains("#define PP_EVT_BLE_TX 0x0100u"), "{header}");
+    assert!(
+        header.contains("#define PP_EVT_BLE_TX_STOP 0x0101u"),
+        "{header}"
+    );
+    assert!(
+        header.contains("#define PP_EVT_PACKET_TX 0x0110u"),
+        "{header}"
+    );
+    assert!(
+        !header.contains("PP_EVT_PACKET_TX_STOP"),
+        "a point event has no stop id: {header}"
+    );
+    assert!(header.contains("#ifndef PP_EVENTS_H"), "{header}");
+    assert!(header.contains("GENERATED FROM"), "{header}");
+}
+
+/// Metadata that cannot become an unambiguous header fails, rather than emitting one that
+/// compiles into the wrong ids.
+#[test]
+fn gen_header_refuses_names_that_collide() {
+    let dir = tmp();
+    let meta = dir.path().join("events.toml");
+    std::fs::write(
+        &meta,
+        "[[event]]
+name = \"radio tx\"
+start_id = 0x0100
+
+         [[event]]
+name = \"radio.tx\"
+start_id = 0x0200
+",
+    )
+    .expect("write metadata");
+
+    wattson()
+        .args(["gen-header", meta.to_str().expect("path")])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("PP_EVT_RADIO_TX"));
+}
+
+/// With no output path it writes to standard output, so it composes in a build script.
+#[test]
+fn gen_header_writes_to_stdout_by_default() {
+    let dir = tmp();
+    let meta = dir.path().join("events.toml");
+    std::fs::write(
+        &meta,
+        "[[event]]
+name = \"SLEEP\"
+start_id = 0x0500
+",
+    )
+    .expect("write metadata");
+
+    wattson()
+        .args([
+            "gen-header",
+            meta.to_str().expect("path"),
+            "--prefix",
+            "EV_",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("#define EV_SLEEP 0x0500u"));
 }
 
 #[test]

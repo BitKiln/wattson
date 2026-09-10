@@ -55,7 +55,7 @@ jobs:
         run: cargo build -p wattson-protocol --no-default-features
 
   embedded:
-    name: protocol links on a Cortex-M0+
+    name: firmware targets (Cortex-M0+)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,6 +66,31 @@ jobs:
       # This one line is the guarantee that RP2040 firmware can actually use this crate.
       - name: Build protocol for thumbv6m-none-eabi
         run: cargo build -p wattson-protocol --no-default-features --target thumbv6m-none-eabi
+
+      # The target-side C library is compiled and tested on the host by `cargo test -p
+      # wattson-target`. That proves it is correct; this proves it fits. A Cortex-M0+ has no
+      # unaligned access and no division, so it is the harshest of the plausible targets - if
+      # the library builds clean here it builds anywhere.
+      - name: Install arm-none-eabi-gcc
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi
+
+      - name: Cross-compile the instrumentation library for Cortex-M0+
+        run: |
+          arm-none-eabi-gcc -c -std=c99 -Os -Wall -Wextra -Wpedantic -Werror             -mcpu=cortex-m0plus -mthumb -ffunction-sections -fdata-sections             -Itarget/include -o /tmp/wattson.o target/src/wattson.c
+          arm-none-eabi-size /tmp/wattson.o
+
+      # A part with little RAM turns these down, so that configuration is built too - a knob
+      # nobody compiles is a knob that stops working.
+      - name: Cross-compile the small configuration
+        run: |
+          arm-none-eabi-gcc -c -std=c99 -Os -Wall -Wextra -Wpedantic -Werror             -mcpu=cortex-m0plus -mthumb -DPP_RING_CAPACITY=32u -DPP_MAX_EVENTS_PER_FRAME=16u             -Itarget/include -o /tmp/wattson_small.o target/src/wattson.c
+          arm-none-eabi-size /tmp/wattson_small.o
+
+      # Instrumentation must also compile away to nothing, on the same target. A release build
+      # with PP_ENABLED=0 is what most projects ship.
+      - name: Cross-compile with instrumentation disabled
+        run: |
+          arm-none-eabi-gcc -c -std=c99 -Os -Wall -Wextra -Wpedantic -Werror             -mcpu=cortex-m0plus -mthumb -DPP_ENABLED=0             -Itarget/include -o /tmp/wattson_off.o target/src/wattson.c
 
   # The decoder eats untrusted bytes off a USB device and the reader eats untrusted files, so
   # both are fuzzed. Nightly rather than per-PR: fuzzing is a soak, not a gate.

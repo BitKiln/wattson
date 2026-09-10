@@ -241,6 +241,37 @@ Replace the first two steps with a real device once you have one; nothing downst
 
 ---
 
+## `wattson gen-header`
+
+Generate a C header of event ids from a metadata file, so the firmware and the metadata cannot
+drift apart.
+
+```bash
+wattson gen-header events.toml -o firmware/src/pp_events.h
+```
+
+```c
+/* BLE_TX
+ * category: radio
+ */
+#define PP_EVT_BLE_TX 0x0101u
+#define PP_EVT_BLE_TX_STOP 0x0102u
+/* stop = start + 1, so PP_SCOPE(PP_EVT_BLE_TX) works. */
+```
+
+| Option | Effect |
+|---|---|
+| `-o, --out FILE` | Where to write. Standard output if omitted. |
+| `--prefix STR` | Macro prefix. Default `PP_EVT_`. |
+| `--guard STR` | Include guard. Derived from the output file name by default. |
+
+Run it from the build, not by hand. An event id is opaque on the wire, so when the two lists
+diverge nothing fails — the capture simply labels the wrong thing. Generation removes the
+possibility rather than documenting it, and it refuses to emit a header at all when two event
+names would collapse onto the same macro.
+
+---
+
 ## `wattson completions`
 
 ```bash

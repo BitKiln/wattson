@@ -3,9 +3,14 @@
 How your firmware tells the profiler what it is doing, so a current waveform becomes an
 answer rather than a picture.
 
-The target-side C library is **phase 3** and not written yet. This document is the contract it
-will be written against, and the parts that already exist — the wire format, the metadata
-file, the latency budget — are real today.
+The target-side C library lives in [`target/`](../target). It is one header and one `.c` file,
+C99, no allocation, and it is verified on every CI run: `target/rust` compiles it, drives it,
+and checks the bytes it produces against the host decoder and against the Rust encoder, frame
+for frame. No device is involved in any of that, which is the point — the wire is exercised
+from both ends before any silicon exists.
+
+What has *not* happened is a run on real hardware. The profiler board is phase 7. Timing
+figures below are budgets, not measurements.
 
 ---
 
@@ -13,23 +18,31 @@ file, the latency budget — are real today.
 
 ```c
 #include "wattson.h"
+#include "pp_events.h"   /* generated; see "Keeping the ids in step" below */
 
 void radio_send(void)
 {
-    PP_EVENT(PP_EVT_RADIO_START);
+    PP_EVENT(PP_EVT_RADIO_TX);
     radio_enable();
     radio_transmit();
-    PP_EVENT(PP_EVT_RADIO_STOP);
+    PP_EVENT(PP_EVT_RADIO_TX_STOP);
 }
 ```
 
-Scoped, so a return in the middle cannot leave the scope open:
+Scoped, so a `return` in the middle cannot leave the scope open:
 
 ```c
 PP_SCOPE(PP_EVT_SENSOR_READ) {
     sensor_read();
 }
 ```
+
+`PP_SCOPE` derives its stop id as `start + 1`. Where the compiler has
+`__attribute__((cleanup))` — GCC and Clang, so every embedded toolchain that matters — the stop
+is emitted even when the block is left by `return` or `goto`. Elsewhere it is not, and the host
+then reports the occurrence as **unterminated** rather than inventing a duration for it.
+`PP_SCOPE_IS_SAFE` is `1` on the first and `0` on the second, so code that must not leak a
+scope can check at compile time.
 
 With a value, for things whose cost depends on a parameter:
 
@@ -111,9 +124,26 @@ high byte = category, low byte = slot
 0x0300..=0x03FF     storage
 0x0400..=0x04FF     compute
 0x0500..=0x05FF     power management / sleep
+0x0600..=0x06FF     RTOS and interrupts
 0x1000..=0xFEFF     application-defined
 0xFF00..=0xFFFF     reserved for profiler-internal events
 ```
+
+A scope's stop id is its start id plus one, which is what lets `PP_SCOPE` take a single
+argument.
+
+### Keeping the ids in step
+
+The ids appear twice — in the firmware and in the metadata — and nothing detects it when they
+diverge. An opaque id relabelled is still a valid capture, just a wrong one. So generate one
+from the other, from the build rather than by hand:
+
+```bash
+wattson gen-header events.toml -o firmware/src/pp_events.h
+```
+
+The generated header refuses to be produced when two event names would collapse onto the same C
+macro, so an ambiguous rename fails at build time instead of silently.
 
 ---
 
@@ -165,7 +195,9 @@ power budget quietly becomes fiction. `wattson assert` treats it as a failure.
 
 ## RTOS integration (phase 6)
 
-The interesting version of all this is automatic. Hooking a FreeRTOS build's
+The interesting version of all this is automatic — and
+[`target/examples/freertos.c`](../target/examples/freertos.c) sketches it. Hooking a FreeRTOS
+build's
 `traceTASK_SWITCHED_IN`, task create and delete, ISR entry and exit, and tickless idle turns
 the timeline into a per-task energy attribution:
 
@@ -182,11 +214,48 @@ Tasks
 At which point the tool answers a question no oscilloscope can: *which RTOS task is
 responsible for this battery drain?* Zephyr's tracing hooks map the same way.
 
+The sketch compiles against FreeRTOS and nothing in it is subtle, but nobody has run it on
+hardware; treat it as a starting point rather than a port.
+
 ---
 
-## Doing it today, without the C library
+## Using the library
 
-The instrumentation library is not written, but the format it will speak is. Anything that can
-emit the `EVENT` frame described in [protocol.md](protocol.md) already works with every part
-of this tool — including a script, a logic analyser bridge, or a few lines of hand-written
-firmware.
+Add two files to your build:
+
+```bash
+cc -Itarget/include -DPP_SINGLE_CONTEXT target/src/wattson.c your_firmware.c
+```
+
+Configure it with `-D`, or with a `wattson_config.h` of your own if you define
+`PP_USE_CONFIG_HEADER`. Every knob has a working default; three are worth deciding
+deliberately.
+
+| Setting | Default | Decide it because |
+|---|---|---|
+| `PP_TIMESTAMP()` | returns `0` | This **must** read the same timer that stamps power samples. Correlation is the whole point, and it is lost the moment two clocks are involved. Leaving it at zero hands timestamping to the profiler on arrival, which makes transport latency the accuracy floor. |
+| `PP_ENTER_CRITICAL` / `PP_EXIT_CRITICAL` | interrupt masking on ARM; a compile error elsewhere | A data race on the ring corrupts the timeline in a way that looks exactly like a firmware bug. If only one context ever records events, say so with `PP_SINGLE_CONTEXT` — the header refuses to guess. |
+| `PP_AUTO_FLUSH_THRESHOLD` | half the ring | Set it to `0` if `PP_EVENT` can run in an ISR and your transport cannot. Flushing does the CRC and COBS work that recording deliberately avoids. |
+
+On a Cortex-M0+ at `-Os` the default configuration costs **1232 bytes of flash and 3616 bytes
+of RAM**; dropping to a 32-event ring and 16 events per frame costs 1148 and 780. Almost all of
+the RAM is the three buffers, and `PP_MAX_EVENTS_PER_FRAME` shrinks two of them.
+
+`PP_ENABLED=0` compiles every macro down to nothing: no buffer, no code, no calls. The
+instrumented code itself still runs, and CI builds that configuration on every commit so it
+cannot rot.
+
+### Where the events go
+
+The library hands framed `EVENT` frames to a write callback you supply, and counts everything
+that could go wrong on the way — `events_dropped`, `write_failures`, `frames_sent` — because a
+lost event becomes a wrong energy figure in someone's CI gate. Read them with `pp_get_stats()`.
+A ring that fills drops the **newest** events, never overwriting history to make room for the
+present.
+
+### Without the library
+
+The library is one way to speak the format, not the only one. Anything that can emit the
+`EVENT` frame described in [protocol.md](protocol.md) works with every part of this tool —
+a script, a logic analyser bridge, a few lines of hand-written firmware, or GPIO toggling with
+no data path at all (see [`target/examples/gpio.c`](../target/examples/gpio.c)).

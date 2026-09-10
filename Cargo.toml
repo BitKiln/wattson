@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["protocol/rust", "core", "simulator", "cli"]
+members = ["protocol/rust", "core", "simulator", "cli", "target/rust"]
 exclude = ["desktop/src-tauri", "fuzz"]
 
 [workspace.package]
@@ -16,6 +16,7 @@ authors = ["Wattson contributors"]
 wattson-protocol = { path = "protocol/rust", version = "0.1.0" }
 wattson-core = { path = "core", version = "0.1.0" }
 wattson-sim = { path = "simulator", version = "0.1.0" }
+wattson-target = { path = "target/rust", version = "0.1.0" }
 
 cobs = { version = "0.4", default-features = false }
 crc = "3"

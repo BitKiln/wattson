@@ -83,11 +83,35 @@ durable part of this project and stays valuable no matter which measurement boar
 | Wire protocol (`no_std`) | `protocol/` | implemented |
 | Core: transports, capture format, statistics, assertions | `core/` | implemented |
 | Simulated device | `simulator/` | implemented |
-| CLI: capture, info, analyze, export, assert, sim | `cli/` | implemented |
+| CLI: capture, info, analyze, export, assert, gen-header, sim | `cli/` | implemented |
+| Target C instrumentation library | `target/` | implemented, untested on silicon |
 | Desktop app (Tauri 2 + React) | `desktop/` | phase 2 |
 | Profiler firmware | `firmware/` | phase 2 |
-| Target C instrumentation library | `target/` | phase 3 |
 | Measurement board | `hardware/` | phase 7 |
+
+### Instrumenting your firmware
+
+Two files — `target/include/wattson.h` and `target/src/wattson.c`, C99, no allocation, 1.2 KB
+of flash on a Cortex-M0+:
+
+```c
+#include "wattson.h"
+#include "pp_events.h"          /* wattson gen-header events.toml -o pp_events.h */
+
+PP_SCOPE(PP_EVT_RADIO_TX) {
+    radio_transmit(payload, length);
+}
+PP_EVENT_U32(PP_EVT_PACKET_TX, length);
+```
+
+Six bytes per event on the wire — a `u32` timestamp and a `u16` id — and no strings at all.
+Names live in the metadata file the host loads, which is what keeps the cost of instrumenting
+a hot path low enough to ignore.
+
+CI compiles it for Cortex-M0+, and `cargo test -p wattson-target` builds it on the host and
+checks that the frames it produces are byte-identical to the ones the Rust encoder produces for
+the same records. What nobody has done yet is run it on real silicon. See
+[docs/instrumentation.md](docs/instrumentation.md).
 
 ## Quick start
 
@@ -156,7 +180,7 @@ simulator/  deterministic synthetic device
 cli/        the `wattson` binary
 desktop/    Tauri 2 + React front end            (phase 2)
 firmware/   profiler MCU firmware and drivers    (phase 2)
-target/     C instrumentation library for the device under test  (phase 3)
+target/     C instrumentation library for the device under test
 examples/   baremetal / FreeRTOS / Zephyr integrations           (phase 3+)
 hardware/   open measurement board                               (phase 7)
 docs/       protocol, capture format, instrumentation, CLI reference

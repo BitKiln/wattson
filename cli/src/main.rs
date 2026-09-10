@@ -67,6 +67,9 @@ enum Command {
     Export(cmd::export::Args),
     /// Check a capture against power budgets. Exits 1 on failure.
     Assert(cmd::assert_cmd::Args),
+    /// Generate a C header of event ids from a metadata file.
+    #[command(name = "gen-header")]
+    GenHeader(cmd::gen_header::Args),
     /// Run a synthetic device, so the tool can be used with no hardware.
     #[cfg(feature = "sim")]
     Sim(cmd::sim::Args),
@@ -103,6 +106,7 @@ fn run(cli: &Cli) -> anyhow::Result<i32> {
         Command::Analyze(a) => cmd::analyze::run(a),
         Command::Export(a) => cmd::export::run(a, cli.quiet),
         Command::Assert(a) => cmd::assert_cmd::run(a),
+        Command::GenHeader(a) => cmd::gen_header::run(a),
         #[cfg(feature = "sim")]
         Command::Sim(a) => cmd::sim::run(a, cli.quiet),
         Command::Completions(a) => cmd::completions::run::<Cli>(a),
