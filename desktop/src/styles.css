@@ -1,0 +1,302 @@
+/* Dark by default, because this window is read next to an oscilloscope and a serial console,
+   and because a waveform on a white field loses its low-contrast detail first. */
+
+:root {
+  --bg: #0e1116;
+  --panel: #141a23;
+  --line: #222b39;
+  --text: #e6ecf5;
+  --dim: #8b98ad;
+  --accent: #ffb300;
+  --blue: #3a8bff;
+  --bad: #ff5a5a;
+  --ok: #46c46a;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  /* The plot owns the wheel. A page that also scrolls under it makes zooming feel broken. */
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+  color: var(--accent);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ------------------------------------------------------------------ bar */
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  flex: 0 0 auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  /* The icon's waveform, in miniature. */
+  background-image: linear-gradient(var(--accent), var(--accent));
+  background-size: 100% 2px;
+  background-position: 0 65%;
+  background-repeat: no-repeat;
+}
+
+.facts {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.facts span {
+  white-space: nowrap;
+}
+
+.dim {
+  color: var(--dim);
+}
+
+.bar button,
+.welcome button {
+  margin-left: auto;
+  background: var(--blue);
+  border: 0;
+  color: #06101f;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.bar button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.integrity {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 5px;
+  max-width: 34ch;
+}
+
+.integrity.ok {
+  color: var(--ok);
+  border: 1px solid #46c46a44;
+}
+
+.integrity.bad {
+  color: var(--bad);
+  border: 1px solid #ff5a5a55;
+  background: #ff5a5a11;
+}
+
+.integrity ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1rem;
+  color: var(--dim);
+  font-size: 0.8rem;
+}
+
+.error {
+  background: #ff5a5a22;
+  border-bottom: 1px solid #ff5a5a55;
+  color: var(--bad);
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+}
+
+/* ------------------------------------------------------------- timeline */
+
+.timeline {
+  flex: 1 1 auto;
+  min-height: 240px;
+  position: relative;
+}
+
+.timeline canvas {
+  display: block;
+  cursor: crosshair;
+}
+
+/* ---------------------------------------------------------------- lower */
+
+.lower {
+  display: flex;
+  gap: 1px;
+  background: var(--line);
+  border-top: 1px solid var(--line);
+  flex: 0 0 42%;
+  min-height: 0;
+}
+
+.panel {
+  background: var(--panel);
+  flex: 0 0 26rem;
+  padding: 0.7rem 0.9rem;
+  overflow: auto;
+  min-width: 0;
+}
+
+.panel.grow {
+  flex: 1 1 auto;
+}
+
+.panel h2 {
+  margin: 0 0 0.6rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+  font-weight: 600;
+}
+
+.hint {
+  color: var(--dim);
+  line-height: 1.55;
+  max-width: 60ch;
+}
+
+table.kv {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table.kv th {
+  text-align: left;
+  font-weight: 400;
+  color: var(--dim);
+  padding: 0.18rem 1.2rem 0.18rem 0;
+  white-space: nowrap;
+  width: 1%;
+}
+
+table.kv td {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 0.18rem 0;
+  white-space: nowrap;
+}
+
+.table-scroll {
+  overflow: auto;
+  max-height: 100%;
+}
+
+table.events {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+table.events th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  text-align: left;
+  color: var(--dim);
+  font-weight: 500;
+  padding: 0.3rem 0.7rem 0.3rem 0;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+table.events th.sortable {
+  cursor: pointer;
+}
+
+table.events th.active {
+  color: var(--text);
+}
+
+table.events td {
+  padding: 0.28rem 0.7rem 0.28rem 0;
+  border-bottom: 1px solid #1a2029;
+  white-space: nowrap;
+}
+
+table.events td.num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: right;
+}
+
+table.events td.warn {
+  color: var(--bad);
+}
+
+table.events tbody tr {
+  cursor: pointer;
+}
+
+table.events tbody tr:hover {
+  background: #1b2330;
+}
+
+.swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  margin-right: 0.45rem;
+}
+
+/* -------------------------------------------------------------- welcome */
+
+.welcome {
+  margin: auto;
+  max-width: 54ch;
+  padding: 2rem;
+  text-align: left;
+}
+
+.welcome h1 {
+  font-size: 1.4rem;
+  margin: 0 0 0.8rem;
+}
+
+.welcome p {
+  line-height: 1.6;
+}
+
+.welcome button {
+  margin: 1.2rem 0 0;
+}

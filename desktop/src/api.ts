@@ -1,8 +1,9 @@
 // The typed edge of the Tauri command surface.
 //
-// Scaffold: phase 2. These types mirror `wattson-core`'s serialised shapes, so the UI never
-// re-derives a number the core already computed. If something here starts doing arithmetic on
-// a measurement, it belongs in the Rust side where the CLI can reach it too.
+// These types mirror `wattson-core`'s serialised shapes, so the UI never re-derives a number
+// the core already computed. If something here starts doing arithmetic on a measurement, it
+// belongs in the Rust side where the CLI can reach it too — otherwise the project grows two
+// analysis engines that quietly disagree.
 
 import { invoke } from "@tauri-apps/api/core";
 
@@ -27,11 +28,39 @@ export interface CaptureInfo {
   effective_rate_hz: number;
   sample_count: number;
   event_count: number;
+  gpio_count: number;
   duration_s: number;
+  compression: string;
+  has_voltage: boolean;
   finalized: boolean;
   recovered: boolean;
-  gaps: unknown[];
+  gaps: Gap[];
+  unknown_chunks: number;
+  corrupt_chunks: number;
 }
+
+/** A stretch of missing data. Rendered, never smoothed over. */
+export interface Gap {
+  start_ns: number;
+  end_ns: number;
+  cause: GapCause;
+  lost_estimate: number;
+}
+
+export type GapCause =
+  | "DeviceOverflow"
+  | "SequenceGap"
+  | "HostOverrun"
+  | "TimestampJump"
+  | "Truncation";
+
+export const GAP_CAUSE_TEXT: Record<GapCause, string> = {
+  DeviceOverflow: "device buffer overflow",
+  SequenceGap: "dropped frame",
+  HostOverrun: "host could not keep up",
+  TimestampJump: "timestamp discontinuity",
+  Truncation: "file truncated",
+};
 
 export interface Distribution {
   n: number;
@@ -81,7 +110,22 @@ export interface EventMark {
   t_ns: number;
   id: number;
   name: string;
+  /** From the metadata, never guessed from the id. */
+  is_stop: boolean;
   value: number | null;
+}
+
+/** The shape a failed command arrives in. `kind` is what lets the UI say something useful. */
+export interface UiError {
+  kind: string;
+  message: string;
+}
+
+export function errorMessage(e: unknown): string {
+  if (typeof e === "object" && e !== null && "message" in e) {
+    return String((e as UiError).message);
+  }
+  return String(e);
 }
 
 export const api = {

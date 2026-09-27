@@ -85,9 +85,22 @@ durable part of this project and stays valuable no matter which measurement boar
 | Simulated device | `simulator/` | implemented |
 | CLI: capture, info, analyze, export, assert, gen-header, sim | `cli/` | implemented |
 | Target C instrumentation library | `target/` | implemented, untested on silicon |
-| Desktop app (Tauri 2 + React) | `desktop/` | phase 2 |
+| Desktop app (Tauri 2 + React) | `desktop/` | implemented for capture files; live capture is phase 2 |
 | Profiler firmware | `firmware/` | phase 2 |
 | Measurement board | `hardware/` | phase 7 |
+
+### Looking at a capture
+
+```bash
+cd desktop && npm install && npm run tauri dev
+```
+
+The window puts the current waveform and the firmware-event lane on one time axis: wheel to
+zoom, drag to select a span, and the statistics panel reports the energy of exactly what is
+selected. The event table is the same `event_stats` the CLI prints, so a number you read on
+screen is the number `wattson assert` will gate on.
+
+It reads `.pprof` files. Live capture stays with the CLI for now.
 
 ### Instrumenting your firmware
 
@@ -178,7 +191,7 @@ protocol/   wire format: spec, golden byte vectors, no_std Rust implementation
 core/       transports, .pprof capture format, statistics, assertions, export
 simulator/  deterministic synthetic device
 cli/        the `wattson` binary
-desktop/    Tauri 2 + React front end            (phase 2)
+desktop/    Tauri 2 + React window: waveform, events, statistics
 firmware/   profiler MCU firmware and drivers    (phase 2)
 target/     C instrumentation library for the device under test
 examples/   baremetal / FreeRTOS / Zephyr integrations           (phase 3+)
@@ -188,8 +201,9 @@ docs/       protocol, capture format, instrumentation, CLI reference
 
 `protocol` is `no_std` and dependency-thin on purpose: phase-2 firmware links that same crate,
 or is validated against the same golden vectors. `core` never prints, never reads argv, and
-never exits — which is what lets the CLI and the future desktop backend share one engine
-rather than growing two.
+never exits — which is what lets the CLI and the desktop window share one engine rather than
+growing two. Nothing in `desktop/` computes a measurement; every number it shows came back
+from a `core` function the CLI calls too.
 
 **Note:** cargo builds into `build/`, not `target/`, because `target/` here holds the C
 instrumentation library for the *target device*. See `.cargo/config.toml`.

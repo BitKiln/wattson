@@ -6,6 +6,8 @@
 # node / tauri
 node_modules/
 desktop/dist/
+# Tauri regenerates these schemas from tauri.conf.json and capabilities/ on every build.
+desktop/src-tauri/gen/
 
 # fuzzing
 fuzz/target/

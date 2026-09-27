@@ -39,7 +39,10 @@ pub struct UiError {
 
 impl<E: std::error::Error> From<E> for UiError {
     fn from(e: E) -> Self {
-        UiError { kind: std::any::type_name::<E>().to_string(), message: e.to_string() }
+        UiError {
+            kind: std::any::type_name::<E>().to_string(),
+            message: e.to_string(),
+        }
     }
 }
 
@@ -66,7 +69,10 @@ pub struct ViewRequest {
 pub async fn list_devices() -> UiResult<Vec<String>> {
     let found = tauri::async_runtime::spawn_blocking(enumerate_devices)
         .await
-        .map_err(|e| UiError { kind: "join".into(), message: e.to_string() })??;
+        .map_err(|e| UiError {
+            kind: "join".into(),
+            message: e.to_string(),
+        })??;
     Ok(found.into_iter().map(|d| d.uri.label()).collect())
 }
 
@@ -99,7 +105,11 @@ pub fn selection_stats(
 ) -> UiResult<RegionStats> {
     let mut guard = state.capture.lock().expect("state mutex");
     let reader = guard.as_mut().ok_or_else(no_capture)?;
-    Ok(region_stats(reader, TimeSpan::new(start_ns, end_ns), &StatsOptions::lenient())?)
+    Ok(region_stats(
+        reader,
+        TimeSpan::new(start_ns, end_ns),
+        &StatsOptions::lenient(),
+    )?)
 }
 
 /// Per-event statistics — the table that makes this a firmware profiler.
@@ -120,16 +130,35 @@ pub fn event_marks(state: tauri::State<'_, AppState>) -> UiResult<Vec<EventMark>
     Ok(reader
         .events()?
         .into_iter()
-        .map(|e| EventMark { t_ns: e.t_ns, id: e.id, name: map.name_of(e.id), value: e.value })
+        .map(|e| {
+            let (name, is_stop) = match map.lookup(e.id) {
+                Some((def, is_stop)) => (def.name.clone(), is_stop),
+                // An id the metadata never declared is shown as its hex id rather than
+                // hidden. An event the metadata forgot is still evidence.
+                None => (format!("0x{:04X}", e.id), false),
+            };
+            EventMark {
+                t_ns: e.t_ns,
+                id: e.id,
+                name,
+                is_stop,
+                value: e.value,
+            }
+        })
         .collect())
 }
 
 /// One event on the timeline.
+///
+/// `is_stop` comes from the metadata rather than from the id's low bit: the start/stop
+/// convention is advisory, and a UI that re-derives the pairing is a second implementation of
+/// something `event_stats` already does properly.
 #[derive(Debug, Serialize)]
 pub struct EventMark {
     pub t_ns: u64,
     pub id: u16,
     pub name: String,
+    pub is_stop: bool,
     pub value: Option<u32>,
 }
 
@@ -157,5 +186,8 @@ pub fn parse_energy(text: String) -> UiResult<f64> {
 }
 
 fn no_capture() -> UiError {
-    UiError { kind: "no_capture".into(), message: "no capture is open".into() }
+    UiError {
+        kind: "no_capture".into(),
+        message: "no capture is open".into(),
+    }
 }

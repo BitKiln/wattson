@@ -92,6 +92,26 @@ jobs:
         run: |
           arm-none-eabi-gcc -c -std=c99 -Os -Wall -Wextra -Wpedantic -Werror             -mcpu=cortex-m0plus -mthumb -DPP_ENABLED=0             -Itarget/include -o /tmp/wattson_off.o target/src/wattson.c
 
+  # The window is a serialization boundary over `core`, so what can rot here is the TypeScript
+  # side of that boundary: a field renamed in Rust and not in `api.ts` compiles on both sides
+  # and produces `undefined` on screen. `tsc` catches the shape; building the Tauri binary
+  # would need a webview toolchain for no more coverage than `cargo check` already gives.
+  desktop:
+    name: desktop front end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+        working-directory: desktop
+      - name: Typecheck and bundle
+        run: npm run build
+        working-directory: desktop
+
   # The decoder eats untrusted bytes off a USB device and the reader eats untrusted files, so
   # both are fuzzed. Nightly rather than per-PR: fuzzing is a soak, not a gate.
   fuzz:
